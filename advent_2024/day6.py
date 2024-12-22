@@ -40,39 +40,68 @@ def get_next_movement(current_movement):
     else:
         return movement_sequence[0]
     
+class GuardState:
+
+    def __init__(self):
+        self.matrix = get_input_char_matrix()
+        self.guard_pos = get_guard_position(self.matrix)
+        self.movement = (-1, 0) # start with moving up one
+        self.matrix[self.guard_pos[0], self.guard_pos[1]] = "X"
+        # TODO: keep track of walls that have been hit?
+
+    def step(self):
+        """
+        Returns True if the guard successfully moves. 
+        Returns False if the guard is off the map.
+        """
+        next_pos = (self.guard_pos[0] + self.movement[0], self.guard_pos[1] + self.movement[1])
+        # Check if we've exited the map
+        if not guard_is_on_map(self.matrix.shape, next_pos):
+            return False
+
+        # if the next value is a wall, change direction
+        next_matrix_val = self.matrix[next_pos[0], next_pos[1]]
+        if next_matrix_val == "#":
+            self.movement = get_next_movement(self.movement)
+        # Otherwise, move in the planned direction + update the matrix
+        else:
+            self.guard_pos = next_pos
+            self.matrix[self.guard_pos[0], self.guard_pos[1]] = "X"
+
+        return True
 
 
 def part1():
-    # Find the initial location of the guard
-    matrix = get_input_char_matrix()
-    current_guard_pos = get_guard_position(matrix)
-    movement = (-1, 0) # start with moving up one
-    next_pos = (current_guard_pos[0] + movement[0], current_guard_pos[1] + movement[1])
+    guard_state = GuardState()
 
-    while True:
-        # print("Position:", current_guard_pos)
-        # print("Moving:", movement)
-        next_pos = (current_guard_pos[0] + movement[0], current_guard_pos[1] + movement[1])
-        # Check if we've exited the map
-        if not guard_is_on_map(matrix.shape, next_pos):
-            visited_pos_count = np.count_nonzero(matrix == "X")
-            return visited_pos_count
-        
-        # if the next value is a wall, change direction
-        next_matrix_val = matrix[next_pos[0], next_pos[1]]
-        if next_matrix_val == "#":
-            movement = get_next_movement(movement)
+    # Run the process until the guard exits the map
+    while guard_state.step():
+        pass
 
-        # Otherwise, move in the planned direction + update the matrix
-        else:
-            matrix[current_guard_pos[0], current_guard_pos[1]] = "X"
-            current_guard_pos = next_pos
-            matrix[current_guard_pos[0], current_guard_pos[1]] = "X"
-
-    print(matrix)
+    # Count total tiles visited
+    visited_pos_count = np.count_nonzero(guard_state.matrix == "X")
+    return visited_pos_count
 
 def part2():
-    pass
+    # BRUTE FORCE!! - This isn't a great solution, and does take a few minutes to run.
+    total = 0
+    # Get all positions which are valid locations for new walls
+    guard_state = GuardState()
+    valid_positions = np.argwhere(guard_state.matrix == ".") 
+
+    for new_wall_pos in valid_positions:
+        # Set up the guard state with the new wall
+        temp_guard_state = GuardState()
+        temp_guard_state.matrix[new_wall_pos[0]][new_wall_pos[1]] = "#"
+        # Rule of thumb: if it takes more than 10,000 steps, then it's stuck in a circle
+        step_count = 0
+        while temp_guard_state.step() and step_count < 10000:
+            step_count += 1
+        print(f"Finished in {step_count} steps")
+        if step_count >= 10000:
+            total += 1
+
+    return total
 
 print("Part 1:", part1())
 print("Part 2:", part2())
